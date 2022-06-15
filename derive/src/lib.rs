@@ -69,7 +69,7 @@ pub fn derive_type_def(
                                 path: ident_path(param.ident.clone()),
                             }),
                             colon_token: <Token![:]>::default(),
-                            bounds: std::array::IntoIter::new([
+                            bounds: [
                                 TypeParamBound::Trait(TraitBound {
                                     paren_token: None,
                                     modifier: TraitBoundModifier::None,
@@ -80,7 +80,8 @@ pub fn derive_type_def(
                                         )
                                         .unwrap(),
                                 }),
-                            ])
+                            ]
+                            .into_iter()
                             .collect(),
                         }))
                     }
@@ -106,15 +107,22 @@ pub fn derive_type_def(
     let (impl_generics, ty_generics, where_clause) =
         input.generics.split_for_impl();
 
-    let info_def = make_info_def(&input);
+    let type_param_decls = make_type_param_decls(&input);
+    let definition_item = make_definition_item(&input);
+    let info_expr = make_type_info_expr(&input);
 
     (quote! {
-        impl #impl_generics ::typescript_type_def::TypeDef for
-            #ty_name #ty_generics
-        #where_clause
-        {
-            const INFO: ::typescript_type_def::type_expr::TypeInfo = #info_def;
-        }
+        const _: () = {
+            #type_param_decls
+            #definition_item
+
+            impl #impl_generics ::typescript_type_def::TypeDef for
+                #ty_name #ty_generics
+            #where_clause
+            {
+                const INFO: ::typescript_type_def::type_expr::TypeInfo = #info_expr;
+            }
+        };
     })
     .into()
 }
@@ -278,7 +286,61 @@ struct FieldDefault(bool);
 
 struct TypeFromMeta(Type);
 
-fn make_info_def(
+fn make_type_info_expr(
+    TypeDefInput {
+        generics,
+        ..
+    }: &TypeDefInput,
+) -> Expr {
+    type_info(
+        generics.type_params().map(|TypeParam { ident, .. }| {
+            type_expr_ref(
+                &Type::Path(TypePath {
+                    qself: None,
+                    path: ident_path(ident.clone()),
+                }),
+                None,
+            )
+        }),
+    )
+}
+
+fn make_type_param_decls(
+    TypeDefInput {
+        generics,
+        ..
+    }: &TypeDefInput,
+) -> proc_macro2::TokenStream {
+    let type_param_decls = generics.type_params().flat_map(|TypeParam { ident, .. }| {
+        let struct_name = format_ident!("__TypeParam_{}", ident);
+        let struct_decl: ItemStruct = parse_quote! {
+            #[allow(non_camel_case_types)]
+            struct #struct_name;
+        };
+        let r#ref = type_expr_ident(&ident.to_string());
+        let type_def_impl: ItemImpl = parse_quote! {
+            impl ::typescript_type_def::TypeDef for #struct_name {
+                const INFO: ::typescript_type_def::type_expr::TypeInfo =
+                    ::typescript_type_def::type_expr::TypeInfo::Native(
+                        ::typescript_type_def::type_expr::NativeTypeInfo {
+                            r#ref: #r#ref,
+                        },
+                    );
+            }
+        };
+
+        [
+            Item::Struct(struct_decl),
+            Item::Impl(type_def_impl),
+        ]
+    });
+
+    quote! {
+        #(#type_param_decls)*
+    }
+}
+
+fn make_definition_item(
     TypeDefInput {
         attrs,
         ident: ty_name,
@@ -292,31 +354,8 @@ fn make_info_def(
         rename,
         ..
     }: &TypeDefInput,
-) -> Expr {
-    let type_param_decls =
-        generics.type_params().flat_map(|TypeParam { ident, .. }| {
-            let struct_name = format_ident!("__TypeParam_{}", ident);
-            let struct_decl: ItemStruct = parse_quote! {
-                #[allow(non_camel_case_types)]
-                struct #struct_name;
-            };
-            let r#ref = type_expr_ident(&ident.to_string());
-            let type_def_impl: ItemImpl = parse_quote! {
-                impl ::typescript_type_def::TypeDef for #struct_name {
-                    const INFO: ::typescript_type_def::type_expr::TypeInfo =
-                        ::typescript_type_def::type_expr::TypeInfo::Native(
-                            ::typescript_type_def::type_expr::NativeTypeInfo {
-                                r#ref: #r#ref,
-                            },
-                        );
-                }
-            };
-            std::array::IntoIter::new([
-                Item::Struct(struct_decl),
-                Item::Impl(type_def_impl),
-            ])
-        });
-    let type_info = type_info(
+) -> Item {
+    let type_definition = type_definition(
         namespace
             .parts
             .iter()
@@ -400,21 +439,13 @@ fn make_info_def(
         generics
             .type_params()
             .map(|TypeParam { ident, .. }| type_ident(&ident.to_string())),
-        generics.type_params().map(|TypeParam { ident, .. }| {
-            type_expr_ref(
-                &Type::Path(TypePath {
-                    qself: None,
-                    path: ident_path(ident.clone()),
-                }),
-                None,
-            )
-        }),
         extract_type_docs(attrs).as_ref(),
     );
-    parse_quote! {{
-        #(#type_param_decls)*
-        #type_info
-    }}
+
+    parse_quote! {
+        const __DEFINITION: &'static ::typescript_type_def::type_expr::TypeDefinition =
+            #type_definition;
+    }
 }
 
 fn fields_to_type_expr(
@@ -705,7 +736,7 @@ fn type_expr_ref(ty: &Type, generics: Option<&Generics>) -> Expr {
 
     parse_quote! {
         ::typescript_type_def::type_expr::TypeExpr::Ref(
-            &<#ty as ::typescript_type_def::TypeDef>::INFO,
+            <#ty as ::typescript_type_def::TypeDef>::GET_INFO_FN,
         )
     }
 }
@@ -816,28 +847,35 @@ fn type_expr_intersection(
     }
 }
 
-fn type_info(
+fn type_definition(
     path_parts: impl IntoIterator<Item = Expr>,
     name: &Expr,
     def: &Expr,
     generic_vars: impl IntoIterator<Item = Expr>,
-    generic_args: impl IntoIterator<Item = Expr>,
     docs: Option<&Expr>,
 ) -> Expr {
     let docs = wrap_optional_docs(docs);
     let path_parts = path_parts.into_iter();
     let generic_vars = generic_vars.into_iter();
+    parse_quote! {
+        &::typescript_type_def::type_expr::TypeDefinition {
+            docs: #docs,
+            path: &[#(#path_parts,)*],
+            name: #name,
+            generic_vars: &[#(#generic_vars,)*],
+            def: #def,
+        }
+    }
+}
+
+fn type_info(
+    generic_args: impl IntoIterator<Item = Expr>,
+) -> Expr {
     let generic_args = generic_args.into_iter();
     parse_quote! {
         ::typescript_type_def::type_expr::TypeInfo::Defined(
             ::typescript_type_def::type_expr::DefinedTypeInfo {
-                def: ::typescript_type_def::type_expr::TypeDefinition {
-                    docs: #docs,
-                    path: &[#(#path_parts,)*],
-                    name: #name,
-                    generic_vars: &[#(#generic_vars,)*],
-                    def: #def,
-                },
+                def: __DEFINITION,
                 generic_args: &[#(#generic_args,)*],
             },
         )
@@ -868,7 +906,7 @@ fn extract_type_docs(attrs: &[Attribute]) -> Option<Expr> {
             } else {
                 Some(
                     line.find(|c: char| !c.is_whitespace())
-                        .unwrap_or_else(|| line.len()),
+                        .unwrap_or(line.len()),
                 )
             }
         })

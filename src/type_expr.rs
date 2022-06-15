@@ -41,7 +41,7 @@ pub struct DefinedTypeInfo {
     /// [`INFO`](crate::emit::TypeDef::INFO) is [`TypeInfo::Native`] and the
     /// native type reference is a [`TypeExpr::Name`] referencing the generic
     /// parameter.
-    pub def: TypeDefinition,
+    pub def: &'static TypeDefinition,
     /// The specific values of the generic arguments of this type for this
     /// instance of the generic type.
     ///
@@ -76,7 +76,7 @@ pub struct TypeDefinition {
 #[derive(Debug, Clone, Copy)]
 pub enum TypeExpr {
     /// A reference to another type.
-    Ref(&'static TypeInfo),
+    Ref(fn() -> &'static TypeInfo),
     /// A reference to a bare type name which should already be defined.
     Name(TypeName),
     /// A type-level string literal.

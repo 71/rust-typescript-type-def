@@ -56,8 +56,8 @@ use std::io;
 ///
 /// export default types;
 /// export namespace types{
-/// export type Uuid=string;
 /// export type User={"id":types.Uuid;"name":string;};
+/// export type Uuid=string;
 /// }
 /// "#
 /// );
@@ -141,6 +141,9 @@ pub trait TypeDef: 'static {
     ///
     /// This type information is used to emit a TypeScript type definition.
     const INFO: TypeInfo;
+
+    /// A function which returns a static reference to [`INFO`](TypeDef::INFO).
+    const GET_INFO_FN: fn() -> &'static TypeInfo = || &Self::INFO;
 }
 
 pub(crate) struct EmitCtx<'ctx> {
@@ -253,7 +256,7 @@ where
 impl Emit for TypeExpr {
     fn emit(&self, ctx: &mut EmitCtx<'_>) -> io::Result<()> {
         match self {
-            TypeExpr::Ref(type_info) => ctx.emit_type_ref(type_info),
+            TypeExpr::Ref(type_info) => ctx.emit_type_ref(type_info()),
             TypeExpr::Name(type_name) => type_name.emit(ctx),
             TypeExpr::String(type_string) => type_string.emit(ctx),
             TypeExpr::Tuple(type_tuple) => type_tuple.emit(ctx),

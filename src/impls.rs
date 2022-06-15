@@ -33,7 +33,7 @@ macro_rules! impl_number {
     ($ty:ty, $name:ident) => {
         impl TypeDef for $ty {
             const INFO: TypeInfo = TypeInfo::Defined(DefinedTypeInfo {
-                def: TypeDefinition {
+                def: &TypeDefinition {
                     docs: None,
                     path: &[],
                     name: Ident(stringify!($name)),
@@ -84,7 +84,7 @@ macro_rules! impl_tuple {
             const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
                 r#ref: TypeExpr::Tuple(TypeTuple {
                     docs: None,
-                    elements: &[$(TypeExpr::Ref(&$var::INFO),)+],
+                    elements: &[$(TypeExpr::Ref($var::GET_INFO_FN),)+],
                 }),
             });
         }
@@ -117,7 +117,7 @@ where
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
         r#ref: TypeExpr::Tuple(TypeTuple {
             docs: None,
-            elements: &[TypeExpr::Ref(&T::INFO); N],
+            elements: &[TypeExpr::Ref(T::GET_INFO_FN); N],
         }),
     });
 }
@@ -129,7 +129,7 @@ where
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
         r#ref: TypeExpr::Union(TypeUnion {
             docs: None,
-            members: &[TypeExpr::Ref(&T::INFO), TypeExpr::ident(Ident("null"))],
+            members: &[TypeExpr::Ref(T::GET_INFO_FN), TypeExpr::ident(Ident("null"))],
         }),
     });
 }
@@ -141,7 +141,7 @@ where
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
         r#ref: TypeExpr::Array(TypeArray {
             docs: None,
-            item: &TypeExpr::Ref(&T::INFO),
+            item: &TypeExpr::Ref(T::GET_INFO_FN),
         }),
     });
 }
@@ -153,7 +153,7 @@ where
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
         r#ref: TypeExpr::Array(TypeArray {
             docs: None,
-            item: &TypeExpr::Ref(&T::INFO),
+            item: &TypeExpr::Ref(T::GET_INFO_FN),
         }),
     });
 }
@@ -167,7 +167,7 @@ macro_rules! impl_set {
             const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
                 r#ref: TypeExpr::Array(TypeArray {
                     docs: None,
-                    item: &TypeExpr::Ref(&T::INFO),
+                    item: &TypeExpr::Ref(T::GET_INFO_FN),
                 }),
             });
         }
@@ -189,8 +189,8 @@ macro_rules! impl_map {
                     path: &[],
                     name: Ident("Record"),
                     generic_args: &[
-                        TypeExpr::Ref(&K::INFO),
-                        TypeExpr::Ref(&V::INFO),
+                        TypeExpr::Ref(K::GET_INFO_FN),
+                        TypeExpr::Ref(V::GET_INFO_FN),
                     ],
                 }),
             });
@@ -208,7 +208,7 @@ where
     T: TypeDef + ?Sized,
 {
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
-        r#ref: TypeExpr::Ref(&T::INFO),
+        r#ref: TypeExpr::Ref(T::GET_INFO_FN),
     });
 }
 
@@ -217,7 +217,7 @@ where
     T: TypeDef + ?Sized,
 {
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
-        r#ref: TypeExpr::Ref(&T::INFO),
+        r#ref: TypeExpr::Ref(T::GET_INFO_FN),
     });
 }
 
@@ -226,7 +226,7 @@ where
     T: Clone + TypeDef + ?Sized,
 {
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
-        r#ref: TypeExpr::Ref(&T::INFO),
+        r#ref: TypeExpr::Ref(T::GET_INFO_FN),
     });
 }
 
@@ -235,7 +235,7 @@ where
     T: TypeDef + ?Sized,
 {
     const INFO: TypeInfo = TypeInfo::Native(NativeTypeInfo {
-        r#ref: TypeExpr::Ref(&T::INFO),
+        r#ref: TypeExpr::Ref(T::GET_INFO_FN),
     });
 }
 
@@ -258,7 +258,7 @@ where
                             value: "Ok",
                         },
                         optional: false,
-                        r#type: TypeExpr::Ref(&T::INFO),
+                        r#type: TypeExpr::Ref(T::GET_INFO_FN),
                     }],
                 }),
                 TypeExpr::Object(TypeObject {
@@ -271,7 +271,7 @@ where
                             value: "Err",
                         },
                         optional: false,
-                        r#type: TypeExpr::Ref(&E::INFO),
+                        r#type: TypeExpr::Ref(E::GET_INFO_FN),
                     }],
                 }),
             ],
@@ -282,7 +282,7 @@ where
 #[cfg(feature = "json_value")]
 impl TypeDef for serde_json::Value {
     const INFO: TypeInfo = TypeInfo::Defined(DefinedTypeInfo {
-        def: TypeDefinition {
+        def: &TypeDefinition {
             docs: None,
             path: &[],
             name: Ident("JSONValue"),

@@ -36,12 +36,12 @@ fn emit() {
 
     impl TypeDef for Test {
         const INFO: TypeInfo = TypeInfo::Defined(DefinedTypeInfo {
-            def: TypeDefinition {
+            def: &TypeDefinition {
                 docs: None,
                 path: &[],
                 name: Ident("Test"),
                 generic_vars: &[],
-                def: TypeExpr::Ref(&Inner::INFO),
+                def: TypeExpr::Ref(Inner::GET_INFO_FN),
             },
             generic_args: &[],
         });
@@ -59,8 +59,8 @@ fn emit() {
         emitted,
         r#"export default types;
 export namespace types{
-export type Usize=number;
 export type Test=(Record<(types.Usize|null),(string)[]>)[];
+export type Usize=number;
 }
 "#
     );
@@ -175,19 +175,19 @@ mod derive {
             test_emit::<Test10>(),
             r#"export default types;
 export namespace types{
-export type Usize=number;
+export type Test10=({"type":"A";"value":{"a":string;"b":types.Usize;};}|{"type":"B";"value":{"A":types.Test4;"B":types.Test5;"C":types.Test6;"D":types.Test7;"E":types.TEST_8;"F":(types.Test9|null);"G":null;};}|{"type":"C";"value":types.Parent;}|{"type":"D";}|{"type":"E";"value":{};}|{"type":"F";"value":[];});
 export type Parent={"FOO_BAR":types.Usize;};
-export type U8=number;
-export type Test=(types.Parent&{"a":string;"b":(types.Usize|null);"c"?:(boolean)[];"d"?:types.U8;"FFF":string;"g":({"Ok":string;}|{"Err":types.Usize;});"h":({"Ok":null;}|{"Err":types.Usize;});"i":(string)[];});
-export type Test2=[types.Test,types.Usize,string];
-export type Test3=types.Test2;
+export type Usize=number;
 export type Test4=(types.Test3|[string,types.Usize]|{"a":string;"b":types.Usize;});
 export type Test5=("a"|"b"|"cool-beans"|"DDD");
 export type Test6=({"A":{"a":types.Usize;};}|{"B":[types.Usize,string];}|{"C":string;}|"D");
 export type Test7=null;
 export type TEST_8={};
+export type Test3=types.Test2;
 export type Test9=never;
-export type Test10=({"type":"A";"value":{"a":string;"b":types.Usize;};}|{"type":"B";"value":{"A":types.Test4;"B":types.Test5;"C":types.Test6;"D":types.Test7;"E":types.TEST_8;"F":(types.Test9|null);"G":null;};}|{"type":"C";"value":types.Parent;}|{"type":"D";}|{"type":"E";"value":{};}|{"type":"F";"value":[];});
+export type Test2=[types.Test,types.Usize,string];
+export type Test=(types.Parent&{"a":string;"b":(types.Usize|null);"c"?:(boolean)[];"d"?:types.U8;"FFF":string;"g":({"Ok":string;}|{"Err":types.Usize;});"h":({"Ok":null;}|{"Err":types.Usize;});"i":(string)[];});
+export type U8=number;
 }
 "#
         );
@@ -225,6 +225,43 @@ export type Test10=({"type":"A";"value":{"a":string;"b":types.Usize;};}|{"type":
         );
     }
 
+    #[derive(Clone, Serialize, TypeDef)]
+    struct TestRecursive {
+        children: Vec<TestRecursive>,
+    }
+
+    #[derive(Clone, Serialize, TypeDef)]
+    struct TestCycle1 {
+        children: Vec<TestCycle2>,
+    }
+
+    #[derive(Clone, Serialize, TypeDef)]
+    struct TestCycle2 {
+        children: Vec<TestCycle1>,
+    }
+
+    #[test]
+    fn emit_with_cycle() {
+        assert_eq_str!(
+            test_emit::<TestRecursive>(),
+            r#"export default types;
+export namespace types{
+export type TestRecursive={"children":(types.TestRecursive)[];};
+}
+"#
+        );
+
+        assert_eq_str!(
+            test_emit::<TestCycle1>(),
+            r#"export default types;
+export namespace types{
+export type TestCycle1={"children":(types.TestCycle2)[];};
+export type TestCycle2={"children":(types.TestCycle1)[];};
+}
+"#
+        );
+    }
+
     mod enum_tags {
         use super::*;
 
@@ -250,8 +287,8 @@ export type Test10=({"type":"A";"value":{"a":string;"b":types.Usize;};}|{"type":
                 test_emit::<Test>(),
                 r#"export default types;
 export namespace types{
-export type Inner={"x":boolean;};
 export type Test=(({"type":"A";}&{"a":types.Inner;})|({"type":"B";}&types.Inner)|{"type":"D";});
+export type Inner={"x":boolean;};
 }
 "#
             );
@@ -284,8 +321,8 @@ export type Test=(({"type":"A";}&{"a":types.Inner;})|({"type":"B";}&types.Inner)
                 test_emit::<Test>(),
                 r#"export default types;
 export namespace types{
-export type Inner={"x":boolean;};
 export type Test=({"type":"A";"value":{"a":types.Inner;};}|{"type":"B";"value":types.Inner;}|{"type":"C";"value":[types.Inner,types.Inner];}|{"type":"D";});
+export type Inner={"x":boolean;};
 }
 "#
             );
@@ -322,8 +359,8 @@ export type Test=({"type":"A";"value":{"a":types.Inner;};}|{"type":"B";"value":t
                 test_emit::<Test>(),
                 r#"export default types;
 export namespace types{
-export type Inner={"x":boolean;};
 export type Test=({"a":types.Inner;}|types.Inner|[types.Inner,types.Inner]|null);
+export type Inner={"x":boolean;};
 }
 "#
             );
@@ -356,8 +393,8 @@ export type Test=({"a":types.Inner;}|types.Inner|[types.Inner,types.Inner]|null)
                 test_emit::<Test>(),
                 r#"export default types;
 export namespace types{
-export type Inner={"x":boolean;};
 export type Test=({"A":{"a":types.Inner;};}|{"B":types.Inner;}|{"C":[types.Inner,types.Inner];}|"D");
+export type Inner={"x":boolean;};
 }
 "#
             );
@@ -456,8 +493,8 @@ export type Test=({
             test_emit::<r#enum>(),
             r#"export default types;
 export namespace types{
-export type struct={"field":string;};
 export type enum=("variant1"|{"variant2":{"field":types.struct;};});
+export type struct={"field":string;};
 }
 "#
         );
@@ -527,9 +564,9 @@ export namespace x.y.z{export type Test={"a":string;};}
             test_emit::<Test2>(),
             r#"export default types;
 export namespace types{
+export type Test2={"a":types.Test<string>;"b":(types.Test<types.Usize>|null);"c":Record<string,types.Test<types.Usize>>;"d":types.Test<types.Test<types.Usize>>;};
 export type Test<A>={"a":Record<string,A>;};
 export type Usize=number;
-export type Test2={"a":types.Test<string>;"b":(types.Test<types.Usize>|null);"c":Record<string,types.Test<types.Usize>>;"d":types.Test<types.Test<types.Usize>>;};
 }
 "#
         );
@@ -597,10 +634,10 @@ export type Test={"a"?:string;"b"?:string;};
             test_emit::<Test>(),
             r#"export default types;
 export namespace types{
+export type Test=(types.Test3&{"a":string;"b":types.ExternalStringWrapper;"c":string;"d":types.I16;});
 export type Test3={"bar":string;};
 export type ExternalStringWrapper=string;
 export type I16=number;
-export type Test=(types.Test3&{"a":string;"b":types.ExternalStringWrapper;"c":string;"d":types.I16;});
 }
 "#
         );
@@ -623,8 +660,8 @@ export type Test=(types.Test3&{"a":string;"b":types.ExternalStringWrapper;"c":st
 
         assert_eq_str!(
             result,
-            r#"export type Usize=number;
-export type Test={"a":Usize;};
+            r#"export type Test={"a":Usize;};
+export type Usize=number;
 "#
         );
     }

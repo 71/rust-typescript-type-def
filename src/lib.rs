@@ -58,8 +58,8 @@
 //!
 //! export default types;
 //! export namespace types{
-//! export type Usize=number;
 //! export type Foo={"a":types.Usize;"b":string;};
+//! export type Usize=number;
 //! }
 //! "#
 //! );
@@ -119,8 +119,8 @@
 //! export namespace types{
 //! export type Foo={"a":string;};
 //! export type Bar={"a":string;};
-//! export type Qux={"a":string;};
 //! export type Baz={"a":types.Qux;};
+//! export type Qux={"a":string;};
 //! }
 //! "#
 //! );
@@ -182,8 +182,8 @@
 //! export namespace types{
 //! export type Foo={"a":string;};
 //! export type Bar={"a":string;};
-//! export type Qux={"a":string;};
 //! export type Baz={"a":types.Qux;};
+//! export type Qux={"a":string;};
 //! }
 //! "#
 //! );
