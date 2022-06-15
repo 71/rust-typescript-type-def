@@ -25,8 +25,12 @@ enum TypeExprRefOrTypeInfoRef<'a> {
 impl<'a> From<&'a TypeExprOrTypeInfoRef> for TypeExprRefOrTypeInfoRef<'a> {
     fn from(v: &'a TypeExprOrTypeInfoRef) -> Self {
         match v {
-            TypeExprOrTypeInfoRef::TypeExpr(e) => TypeExprRefOrTypeInfoRef::TypeExprRef(e),
-            TypeExprOrTypeInfoRef::TypeInfoRef(r) => TypeExprRefOrTypeInfoRef::TypeInfoRef(r),
+            TypeExprOrTypeInfoRef::TypeExpr(e) => {
+                TypeExprRefOrTypeInfoRef::TypeExprRef(e)
+            }
+            TypeExprOrTypeInfoRef::TypeInfoRef(r) => {
+                TypeExprRefOrTypeInfoRef::TypeInfoRef(r)
+            }
         }
     }
 }
@@ -71,7 +75,10 @@ impl IterDefDeps {
     /// Creates a new iterator of the dependencies of the given type info.
     pub fn new(roots: &[&'static TypeInfo]) -> Self {
         Self {
-            stack: roots.iter().map(|x| TypeExprOrTypeInfoRef::TypeInfoRef(x)).collect(),
+            stack: roots
+                .iter()
+                .map(|x| TypeExprOrTypeInfoRef::TypeInfoRef(x))
+                .collect(),
             visited: HashSet::new(),
             emitted: HashSet::new(),
         }
@@ -98,9 +105,7 @@ impl Iterator for IterDefDeps {
             stack.extend(
                 TypeExprChildren::new(&expr)
                     .filter(|expr| {
-                        !visited.contains(&hash_type_expr(
-                            (*expr).into(),
-                        ))
+                        !visited.contains(&hash_type_expr((*expr).into()))
                     })
                     .map(|x| TypeExprOrTypeInfoRef::TypeExpr(*x)),
             );
@@ -158,7 +163,9 @@ impl<'a> TypeExprChildren<'a> {
                 name: _,
                 generic_args,
             })) => Self::Slice(generic_args.iter()),
-            Err(TypeExpr::String(TypeString { docs: _, value: _ })) => Self::None,
+            Err(TypeExpr::String(TypeString { docs: _, value: _ })) => {
+                Self::None
+            }
             Err(TypeExpr::Tuple(TypeTuple { docs: _, elements })) => {
                 Self::Slice(elements.iter())
             }
@@ -173,9 +180,10 @@ impl<'a> TypeExprChildren<'a> {
             Err(TypeExpr::Union(TypeUnion { docs: _, members })) => {
                 Self::Slice(members.iter())
             }
-            Err(TypeExpr::Intersection(TypeIntersection { docs: _, members })) => {
-                Self::Slice(members.iter())
-            }
+            Err(TypeExpr::Intersection(TypeIntersection {
+                docs: _,
+                members,
+            })) => Self::Slice(members.iter()),
         }
     }
 }
@@ -343,7 +351,10 @@ fn hash_type_expr(expr: TypeExprRefOrTypeInfoRef<'_>) -> u64 {
                     visit_expr(member, state);
                 }
             }
-            Err(TypeExpr::Intersection(TypeIntersection { docs: _, members })) => {
+            Err(TypeExpr::Intersection(TypeIntersection {
+                docs: _,
+                members,
+            })) => {
                 7.hash(state);
                 for member in *members {
                     visit_expr(member, state);

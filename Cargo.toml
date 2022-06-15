@@ -24,10 +24,13 @@ include = [
 ]
 
 [features]
+default = []
 json_value = ["serde_json"]
+export-all = ["dep:linkme", "typescript-type-def-derive/export-all"]
 
 [dependencies]
 typescript-type-def-derive = { version = "=0.5.3", path = "./derive" }
+linkme = { version = "0.2.10", optional = true }
 serde_json = { version = "1.0.64", optional = true }
 
 [dev-dependencies]

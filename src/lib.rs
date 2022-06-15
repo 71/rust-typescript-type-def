@@ -194,6 +194,8 @@
 mod emit;
 mod impls;
 mod iter_def_deps;
+#[doc(hidden)]
+pub mod macro_support;
 pub mod type_expr;
 
 pub use crate::emit::{
@@ -287,3 +289,29 @@ pub use crate::emit::{
 /// | [`#[serde(bound = "T: MyTrait")]`](https://serde.rs/field-attrs.html#bound) | ? |
 /// | [`#[serde(getter = "...")]`](https://serde.rs/field-attrs.html#getter) | ✗ |
 pub use typescript_type_def_derive::TypeDef;
+
+/// Exports the given [`TypeDef`s](TypeDef) to a generated constant.
+///
+/// This macro creates a test which will update the generated file when
+/// necessary.
+pub use typescript_type_def_derive::export;
+
+/// Exports the given [`TypeDef`s](TypeDef) to a file.
+///
+/// This macro creates a test which will update the generated file when
+/// necessary.
+pub use typescript_type_def_derive::export_to_file;
+
+/// Exports all automatically-derived [`TypeDef`s](TypeDef) in the crate to a
+/// constant.
+///
+/// See [`export`] for more information.
+#[cfg(feature = "export-all")]
+pub use typescript_type_def_derive::export_all;
+
+/// Exports all automatically-derived [`TypeDef`s](TypeDef) in the crate to a
+/// generated `.d.ts` file.
+///
+/// See [`export_to_file`] for more information.
+#[cfg(feature = "export-all")]
+pub use typescript_type_def_derive::export_all_to_file;
