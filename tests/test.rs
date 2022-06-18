@@ -742,13 +742,24 @@ mod write_ref_expr {
 }
 
 #[cfg_attr(feature = "export-all", typescript_type_def::export_all)]
-#[cfg_attr(not(feature = "export-all"), typescript_type_def::export(derive::Parent, derive::TestRecursive, derive::TestCycle1))]
+#[cfg_attr(
+    not(feature = "export-all"),
+    typescript_type_def::export(
+        derive::Parent,
+        derive::TestRecursive,
+        derive::TestCycle1
+    )
+)]
 const ALL_DEFS: &str;
 
 #[test]
 fn test_export_to_string() {
     #[cfg(feature = "export-all")]
-    println!("type_infos: {:?}\ndefs:\n{}", &crate::TYPE_INFOS[..], ALL_DEFS);
+    println!(
+        "type_infos: {:?}\ndefs:\n{}",
+        &crate::TYPE_INFOS[..],
+        ALL_DEFS
+    );
     #[cfg(not(feature = "export-all"))]
     println!("defs:\n{}", ALL_DEFS);
 
@@ -766,5 +777,7 @@ typescript_type_def::export_to_file!(tmp_out_path(); derive::Parent);
 
 #[test]
 fn test_export_to_file() {
-    assert!(std::fs::read_to_string(tmp_out_path()).unwrap().contains("export type Parent"));
+    assert!(std::fs::read_to_string(tmp_out_path())
+        .unwrap()
+        .contains("export type Parent"));
 }

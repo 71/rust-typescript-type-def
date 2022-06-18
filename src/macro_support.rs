@@ -3,9 +3,12 @@
 //! Signatures of the functions defined in this module may change at any time.
 //! Use at your own risks.
 
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
-use crate::{type_expr::TypeInfo, DefinitionFileOptions, write_definition_file_from_type_infos};
+use crate::{
+    type_expr::TypeInfo, write_definition_file_from_type_infos,
+    DefinitionFileOptions,
+};
 
 /// Re-export of `linkme` used in `export_all*` macros.
 #[cfg(feature = "export-all")]
@@ -21,7 +24,8 @@ pub fn type_infos_to_string(type_infos: &[&'static TypeInfo]) -> String {
         ..Default::default()
     };
 
-    write_definition_file_from_type_infos(&mut buf, options, type_infos).unwrap();
+    write_definition_file_from_type_infos(&mut buf, options, type_infos)
+        .unwrap();
 
     String::from_utf8(buf).unwrap()
 }

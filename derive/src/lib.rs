@@ -106,7 +106,11 @@ pub fn export_all_to_file(input: TokenStream) -> TokenStream {
     let ExportedTypeInfos {
         export_tokens,
         path: _,
-    } = export_type_infos("all", export::export_all_type_infos_expr(), Some(file));
+    } = export_type_infos(
+        "all",
+        export::export_all_type_infos_expr(),
+        Some(file),
+    );
     let export_all_slice_decl = export::export_all_slice_decl();
 
     quote! {

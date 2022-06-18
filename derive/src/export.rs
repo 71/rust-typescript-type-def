@@ -1,12 +1,12 @@
 use std::{fmt::Display, path::PathBuf};
 
 use proc_macro2::{Literal, TokenStream};
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use syn::{
     parse::{Parse, ParseStream},
     parse_quote,
     punctuated::Punctuated,
-    Expr, Ident, Result, Token, Type, Visibility, Attribute,
+    Attribute, Expr, Ident, Result, Token, Type, Visibility,
 };
 
 #[derive(Hash)]
@@ -117,33 +117,36 @@ pub fn export_type_infos(
     type_infos_expr: Expr,
     type_infos_path: Option<Expr>,
 ) -> ExportedTypeInfos {
-    let (type_infos_path, type_infos_path_expr) = if let Some(expr) = type_infos_path {
-        (None, expr)
-    } else {
-        let type_infos_path = get_type_infos_path(&id);
-        if !type_infos_path.exists() {
-            // Make sure that the file exists, since `include_str!()` will fail
-            // if the file does not exist.
-            std::fs::File::options()
-                .create(true)
-                .append(true)
-                .open(&type_infos_path)
-                .unwrap();
-        }
-        let type_infos_path_lit = Literal::string(
-            type_infos_path
-                .to_str()
-                .expect("cannot convert out path to UTF-8"),
-        );
+    let (type_infos_path, type_infos_path_expr) =
+        if let Some(expr) = type_infos_path {
+            (None, expr)
+        } else {
+            let type_infos_path = get_type_infos_path(&id);
+            if !type_infos_path.exists() {
+                // Make sure that the file exists, since `include_str!()` will fail
+                // if the file does not exist.
+                std::fs::File::options()
+                    .create(true)
+                    .append(true)
+                    .open(&type_infos_path)
+                    .unwrap();
+            }
+            let type_infos_path_lit = Literal::string(
+                type_infos_path
+                    .to_str()
+                    .expect("cannot convert out path to UTF-8"),
+            );
 
-        (Some(type_infos_path), parse_quote! { #type_infos_path_lit })
-    };
+            (Some(type_infos_path), parse_quote! { #type_infos_path_lit })
+        };
     // We compare `include_str!()` to the read value when using a literal,
     // because the call to `include_str!()` is supposed to ensure the binary
     // will reload when the pointed-at file changes, which is necessary for this
     // test to work correctly.
-    let include_type_infos_path_stmt = type_infos_path.is_some().then(|| quote! {
-        assert_eq!(include_str!(#type_infos_path_expr), actual);
+    let include_type_infos_path_stmt = type_infos_path.is_some().then(|| {
+        quote! {
+            assert_eq!(include_str!(#type_infos_path_expr), actual);
+        }
     });
     let test_name = format_ident!("ensure_type_infos_are_up_to_date_{id}");
 
